@@ -1,4 +1,5 @@
 import { HelloController } from './hello-controller';
+import { EurekaController } from './eureka-controller';
 import { HelloObjectController } from './hello-object-controller';
 import { HelloIocDirectController, HelloIocInterfaceController } from './hello-ioc-controller';
 import { HelloServiceBase, HelloServiceImpl, IocHelloService } from './ioc-services';
@@ -6,6 +7,7 @@ import { HelloServiceBase, HelloServiceImpl, IocHelloService } from './ioc-servi
 export default [
   HelloController,
   HelloObjectController,
+  EurekaController,
 
   // The IOC controllers
   HelloIocDirectController,
