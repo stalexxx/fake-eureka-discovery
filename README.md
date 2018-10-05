@@ -1,9 +1,9 @@
 #methods
-GET /eureka/apps
-GET /eureka/apps/delta
-POST /eureka/apps/:APP_NAME
-##not ready:
-PUT /eureka/apps/:APP_NAME
+* GET /eureka/apps
+* GET /eureka/apps/delta
+* POST /eureka/apps/:APP_NAME
+### not ready:
+* PUT /eureka/apps/:APP_NAME
 
 # Initial setup
 ```
