@@ -1,5 +1,3 @@
-import {XMLElement, XMLAttribute, XMLChild} from 'xml-decorators';
-
 // export class Eureka {
 //     constructor(config: EurekaClient.EurekaConfig)
 //     start(): void;
@@ -41,6 +39,10 @@ export namespace EurekaClient {
         overriddenstatus?: InstanceStatus;
         leaseInfo?: LeaseInfo;
         isCoordinatingDiscoveryServer?: boolean;
+        metadata: Metadata;
+        lastUpdatedTimestamp: number;
+        lastDirtyTimestamp: number;
+        actionType: ActionType;
     }
 
     export interface EurekaClientConfig {
@@ -63,162 +65,102 @@ export namespace EurekaClient {
         preferIpAddress?: boolean;
     }
 
-    export interface PortWrapper {
+    interface PortWrapperEnabled {
         enabled: boolean;
-        port: number;
     }
 
-    export class PortWrapperImpl implements PortWrapper {
-        // todo issue
-        constructor(port: number) {
-            this.port = port;
-        }
-
-        @XMLAttribute
-        enabled: boolean = true;
-
-        port: number;
-
-        public toString(): string {
-            return this.port.toString();
-        }
+    export interface PortWrapper {
+        '#': number;
+        '@': PortWrapperEnabled;
     }
 
     export interface LeaseInfo {
         renewalIntervalInSecs: number;
         durationInSecs: number;
+        registrationTimestamp: number;
+        lastRenewalTimestamp: number;
+        evictionTimestamp: number;
+        serviceUpTimestamp: number;
     }
 
-    class LeaseInfoImpl implements LeaseInfo {
-        @XMLChild
-        durationInSecs: number = 90;
-        @XMLChild
-        renewalIntervalInSecs: number = 30;
-
-        @XMLChild
-        registrationTimestamp: number = 1514764800; // 2018 jan 1
-
-        @XMLChild
-        lastRenewalTimestamp: number = 7258118400000;
-        @XMLChild
-        evictionTimestamp: number = 0;
-        @XMLChild
-        serviceUpTimestamp = 7258118400000;// 2200 jan 1
+    export interface DataCenterInfoAttrs {
+        'class': string;
     }
 
     export interface DataCenterInfo {
         name: DataCenterName;
+        '@': DataCenterInfoAttrs;
     }
 
-    export class DataCenterInfoImpl implements EurekaClient.DataCenterInfo {
-        @XMLChild
-        name: EurekaClient.DataCenterName = 'MyOwn';
-        @XMLAttribute
-        class: string = '"com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo"';
-    }
-
-    export class Metadata {
-        constructor(name: string, port: number) {
-            this.port = port;
-            this.instanceId = name + ':' + port;
-        }
-        @XMLChild
+    export interface Metadata {
         instanceId: string;
-        @XMLChild({name : 'management.port'})
+        'management.port': number;
+        'management.context-path': string;
+    }
+
+    interface Config {
+        name: string;
+        host: string;
         port: number;
-        @XMLChild({name : 'management.context-path'})
-        path = '/management';
     }
 
-    @XMLElement({root: 'applications'})
-    export class EurekaConfigImpl {
-        constructor(eurekaConfigImpls: EurekaClient.EurekaInstanceConfigImpl[]) {
-            this.applications = eurekaConfigImpls;
-            this.hashcode = 'UP_' + this.applications.length;
-        }
-
-        @XMLChild({name: 'versions__delta'})
-        versions = 1;
-        @XMLChild({name: 'apps__hashcode'})
-        hashcode: string;
-        @XMLChild({stripPluralS : true})
-        applications: EurekaClient.EurekaInstanceConfigImpl[];
+    export function appsObjects(configs: Config[]) {
+        return {
+            'versions__delta': 1,
+            'apps__hashcode': 'UP_' + configs.length,
+            applications: configs.map(c => appObject(c))
+        };
     }
 
-    @XMLElement({root: 'application'})
-    export class EurekaInstanceConfigImpl implements EurekaClient.EurekaInstanceConfig {
-        constructor(name: string, host: string, port: number) {
-            const nameLower = name.toLocaleLowerCase();
-            this.hostName = nameLower;
-            this.app = name;
-            this.ipAddr = host;
-            this.status = 'UP';
-            this.overriddenstatus = 'UNKNOWN';
-            this.port = new PortWrapperImpl(port);
-            this.securePort = new PortWrapperImpl(port);
-            this.instanceId = host + this.hostName + port;
-            this.countryId = 1;
-            this.dataCenterInfo = new DataCenterInfoImpl();
-            this.leaseInfo = new LeaseInfoImpl();
-            this.metadata = new Metadata(name, port);
-            this.homePageUrl = 'http://' + host + ':' + port + '/';
-            this.statusPageUrl = this.homePageUrl + 'management/info';
-            this.healthCheckUrl = this.homePageUrl + 'management/health';
-            this.vipAddress = nameLower;
-            this.secureVipAddress = this.vipAddress;
-            this.isCoordinatingDiscoveryServer = false;
-            this.lastDirtyTimestamp = 7258118400000;
-            this.lastUpdatedTimestamp = 7258118400000;
-            this.actionType = 'ADDED';
-        }
+    export function appObject(config: Config) {
 
-        @XMLChild
-        app: string;
-        @XMLChild
-        appGroupName: string;
-        @XMLChild
-        countryId: number;
-        @XMLChild
-        dataCenterInfo: DataCenterInfoImpl = new DataCenterInfoImpl();
-        @XMLChild
-        healthCheckUrl: string;
-        @XMLChild
-        homePageUrl: string;
-        @XMLChild
-        hostName: string;
-        @XMLChild
-        instanceId: string;
-        @XMLChild
-        ipAddr: string;
-        @XMLChild
-        isCoordinatingDiscoveryServer: boolean = false;
-        @XMLChild
-        leaseInfo: EurekaClient.LeaseInfo;
-        @XMLChild
-        overriddenstatus: EurekaClient.InstanceStatus;
-        @XMLChild
-        port: EurekaClient.PortWrapper;
-        @XMLChild
-        securePort: EurekaClient.PortWrapper;
-        @XMLChild
-        secureHealthCheckUrl: string;
-        @XMLChild
-        secureVipAddress: string;
-        @XMLChild
-        sid: string;
-        @XMLChild
-        status: EurekaClient.InstanceStatus;
-        @XMLChild
-        statusPageUrl: string;
-        @XMLChild
-        vipAddress: string;
-        @XMLChild
-        metadata: Metadata;
-        @XMLChild
-        lastUpdatedTimestamp: number;
-        @XMLChild
-        lastDirtyTimestamp: number;
-        @XMLChild
-        actionType: ActionType;
+        const {name, host, port} = config;
+        const nameLower = name.toString();
+        const homePageUrl = 'http://' + host + ':' + port + '/';
+        return {
+            app: name,
+            appGroupName: name,
+            countryId: 1,
+            hostName: host,
+            instanceId: host + ':' + nameLower + ':' + port,
+            ipAddr: host,
+            isCoordinatingDiscoveryServer: false,
+            overriddenstatus: 'UNKNOWN',
+            // secureHealthCheckUrl:,
+            secureVipAddress: nameLower,
+            status: 'UP',
+            homePageUrl: homePageUrl,
+            healthCheckUrl: homePageUrl + 'management/health',
+            statusPageUrl: homePageUrl + 'management/info',
+            vipAddress: nameLower,
+            lastUpdatedTimestamp: 7258118400000,
+            lastDirtyTimestamp: 7258118400000,
+            actionType: 'ADDED',
+            dataCenterInfo: {
+                '@': {class: '"com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo"'},
+                name: 'MyOwn'
+            },
+            leaseInfo: {
+                durationInSecs: 90,
+                renewalIntervalInSecs: 30,
+                registrationTimestamp: 1514764800, // 2018 jan 1
+                lastRenewalTimestamp: 7258118400000,
+                evictionTimestamp: 0,
+                serviceUpTimestamp: 7258118400000// 2200 jan 1
+            },
+            port: {
+                '#': port,
+                '@': {enabled: true}
+            },
+            securePort: {
+                '#': 443,
+                '@': {enabled: false}
+            },
+            metadata: {
+                instanceId: name + ':' + port,
+                'management.port': port,
+                'management.context-path': '/management'
+            },
+        };
     }
 }
